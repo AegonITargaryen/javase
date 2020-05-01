@@ -1,0 +1,22 @@
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+logs/
+
+###  mvn ###
+.mvn/
+mvnw
+mvnw.cmd
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### VS Code ###
+.vscode/
+
+### 压缩包 ###
+*.zip
+### mac 文件 ###
+.DS_Store
