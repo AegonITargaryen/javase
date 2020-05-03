@@ -37,6 +37,13 @@ import java.util.function.Function;
 import sun.misc.SharedSecrets;
 
 /**
+ * 1. HashMap和HashTable大体上功能一致，区别主要有两条：
+ *      (1) HashMap不是线程安全的，而HashTable是的。可用 Collections#synchronizedMap 方法来构造线程安全的Map
+ *      (2) HashMap支持key和value为null，而HashTable不支持
+ * 2. HashMap返回的迭代器是实现fail-fast机制的。但不保证在不同步的修改下一定会抛出 ConcurrentModificationException 异常。因此代码逻辑不可依赖该异常
+ */
+
+/**
  * Hash table based implementation of the <tt>Map</tt> interface.  This
  * implementation provides all of the optional map operations, and permits
  * <tt>null</tt> values and the <tt>null</tt> key.  (The <tt>HashMap</tt>
