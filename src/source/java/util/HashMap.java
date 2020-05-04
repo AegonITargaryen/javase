@@ -314,6 +314,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             return oldValue;
         }
 
+        // key 和 value 均相等时，则认为该Node相等
         public final boolean equals(Object o) {
             if (o == this)
                 return true;
@@ -344,6 +345,9 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * cheapest possible way to reduce systematic lossage, as well as
      * to incorporate impact of the highest bits that would otherwise
      * never be used in index calculations because of table bounds.
+     *
+     * 1. >>> 为不带符号右移
+     * 2. 此处，key的hash值，是计算出 key 的 hashcode, 然后和高16位进行异或得到的。提高随机性，防止hashcode写得不好，造成桶的分布不均匀
      */
     static final int hash(Object key) {
         int h;
@@ -353,17 +357,25 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     /**
      * Returns x's Class if it is of the form "class C implements
      * Comparable<C>", else null.
+     *
+     * 类的实现必须为：  class C implements Comparable<C>"
+     * https://blog.csdn.net/qpzkobe/article/details/79533237
      */
     static Class<?> comparableClassFor(Object x) {
+        // 首先判断Comparable接口是否在继承链上
         if (x instanceof Comparable) {
             Class<?> c; Type[] ts, as; Type t; ParameterizedType p;
             if ((c = x.getClass()) == String.class) // bypass checks
                 return c;
+            // 判断该对象的"直接实现"的接口
             if ((ts = c.getGenericInterfaces()) != null) {
                 for (int i = 0; i < ts.length; ++i) {
+                    // 实现了泛型参数的类型
                     if (((t = ts[i]) instanceof ParameterizedType) &&
+                            // 去掉了泛型参数部分的Type对象
                         ((p = (ParameterizedType)t).getRawType() ==
                          Comparable.class) &&
+                            // 以数组的形式返回泛型参数列表
                         (as = p.getActualTypeArguments()) != null &&
                         as.length == 1 && as[0] == c) // type arg is c
                         return c;
@@ -385,6 +397,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
 
     /**
      * Returns a power of two size for the given target capacity.
+     *
+     * 返回大于输入参数且最近的2的整数次幂的数
      */
     static final int tableSizeFor(int cap) {
         int n = cap - 1;

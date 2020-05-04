@@ -907,6 +907,8 @@ public final class Class<T> implements java.io.Serializable,
      *     type that cannot be instantiated for any reason
      * @return an array of interfaces implemented by this class
      * @since 1.5
+     *
+     * 返回该class对象直接所代表的类直接实现的接口
      */
     public Type[] getGenericInterfaces() {
         ClassRepository info = getGenericInfo();

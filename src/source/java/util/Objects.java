@@ -54,6 +54,9 @@ public final class Objects {
      * @return {@code true} if the arguments are equal to each other
      * and {@code false} otherwise
      * @see Object#equals(Object)
+     *
+     *
+     * 判断两个对象是否相等。调用equals方法进行比较
      */
     public static boolean equals(Object a, Object b) {
         return (a == b) || (a != null && a.equals(b));

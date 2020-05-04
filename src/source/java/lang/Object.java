@@ -59,6 +59,8 @@ public class Object {
      * @return The {@code Class} object that represents the runtime
      *         class of this object.
      * @jls 15.8.2 Class Literals
+     *
+     * 1. 返回对象的运行时类型。如果是匿名对象，则返回依赖他的对象的运行时类型，并用索引 $1,$2,$3... 区分
      */
     public final native Class<?> getClass();
 
