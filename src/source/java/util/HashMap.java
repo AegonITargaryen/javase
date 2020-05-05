@@ -417,6 +417,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * necessary. When allocated, length is always a power of two.
      * (We also tolerate length zero in some operations to allow
      * bootstrapping mechanics that are currently not needed.)
+     *
+     * hash列表。transient 代表不参与序列化过程
      */
     transient Node<K,V>[] table;
 
@@ -437,6 +439,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * the HashMap or otherwise modify its internal structure (e.g.,
      * rehash).  This field is used to make iterators on Collection-views of
      * the HashMap fail-fast.  (See ConcurrentModificationException).
+     *
+     * hashMap被修改的次数，用于fail-fast机制
      */
     transient int modCount;
 
@@ -736,13 +740,19 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                     if (e.next == null)
                         newTab[e.hash & (newCap - 1)] = e;
                     else if (e instanceof TreeNode)
+                        // 如果是红黑树结构，则使用该方法处理
                         ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);
                     else { // preserve order
+                        // 进行链表复制
                         Node<K,V> loHead = null, loTail = null;
                         Node<K,V> hiHead = null, hiTail = null;
                         Node<K,V> next;
                         do {
                             next = e.next;
+                            // e.hash & oldCap 判断该节点在扩容前后的数组中的位置是否发生变化。
+                            // 结果为0时，说明 e.hash 和 oldCap 相除后的商为偶数，扩容前后节点所在的位置不变。
+                            // 结果不为0时，说明 e.hash 和 oldCap 相除后的商为奇数，扩容前后节点所在的位置发生变化。新位置为 oldCap + j
+                            // 这种算法的前提条件是 oldCap 为2的整数次幂
                             if ((e.hash & oldCap) == 0) {
                                 if (loTail == null)
                                     loHead = e;
