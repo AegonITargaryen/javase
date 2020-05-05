@@ -530,6 +530,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         int s = m.size();
         if (s > 0) {
             if (table == null) { // pre-size
+                // + 1.0F 为向上取整
                 float ft = ((float)s / loadFactor) + 1.0F;
                 int t = ((ft < (float)MAXIMUM_CAPACITY) ?
                          (int)ft : MAXIMUM_CAPACITY);
@@ -537,6 +538,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                     threshold = tableSizeFor(t);
             }
             else if (s > threshold)
+                // 容量不够时，在push前提前扩容一次。（可能后面循环中发现容量还是不够，就需要再次出发resize方法扩容）
                 resize();
             for (Map.Entry<? extends K, ? extends V> e : m.entrySet()) {
                 K key = e.getKey();
@@ -664,12 +666,14 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                 ((k = p.key) == key || (key != null && key.equals(k))))
                 e = p;
             else if (p instanceof TreeNode)
+                // 红黑树结构，调用红黑树的方法进行处理
                 e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);
             else {
                 for (int binCount = 0; ; ++binCount) {
                     if ((e = p.next) == null) {
                         p.next = newNode(hash, key, value, null);
                         if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st
+                            // 链表转红黑树
                             treeifyBin(tab, hash);
                         break;
                     }
@@ -680,6 +684,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                 }
             }
             if (e != null) { // existing mapping for key
+                // 之前存在key，则返回旧的value，且不改变modCount
                 V oldValue = e.value;
                 if (!onlyIfAbsent || oldValue == null)
                     e.value = value;
@@ -687,9 +692,11 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                 return oldValue;
             }
         }
+        // 新创建一个node，增加modCount和size
         ++modCount;
         if (++size > threshold)
             resize();
+        // LinkedHashMap使用该回调函数
         afterNodeInsertion(evict);
         return null;
     }
@@ -786,13 +793,17 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     /**
      * Replaces all linked nodes in bin at index for given hash unless
      * table is too small, in which case resizes instead.
+     *
+     * bin 结构变成红黑树
      */
     final void treeifyBin(Node<K,V>[] tab, int hash) {
         int n, index; Node<K,V> e;
+        // 某个bin变成红黑树结构，整个tab的长度必须大于 MIN_TREEIFY_CAPACITY， 否则直接扩容
         if (tab == null || (n = tab.length) < MIN_TREEIFY_CAPACITY)
             resize();
         else if ((e = tab[index = (n - 1) & hash]) != null) {
             TreeNode<K,V> hd = null, tl = null;
+            // 该循环按顺序生成双向链表，并将元素类型从 Node 转换成 TreeNode
             do {
                 TreeNode<K,V> p = replacementTreeNode(e, null);
                 if (tl == null)
@@ -804,6 +815,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                 tl = p;
             } while ((e = e.next) != null);
             if ((tab[index] = hd) != null)
+                // 根据双向链表生成红黑树
                 hd.treeify(tab);
         }
     }
@@ -828,6 +840,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      *         <tt>null</tt> if there was no mapping for <tt>key</tt>.
      *         (A <tt>null</tt> return can also indicate that the map
      *         previously associated <tt>null</tt> with <tt>key</tt>.)
+     *         
+     *         删除key所对应的节点。返回值为被删除节点的值
      */
     public V remove(Object key) {
         Node<K,V> e;
