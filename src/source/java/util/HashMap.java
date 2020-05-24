@@ -840,7 +840,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      *         <tt>null</tt> if there was no mapping for <tt>key</tt>.
      *         (A <tt>null</tt> return can also indicate that the map
      *         previously associated <tt>null</tt> with <tt>key</tt>.)
-     *         
+     *
      *         删除key所对应的节点。返回值为被删除节点的值
      */
     public V remove(Object key) {
