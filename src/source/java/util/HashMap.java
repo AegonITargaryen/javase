@@ -425,6 +425,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     /**
      * Holds cached entrySet(). Note that AbstractMap fields are used
      * for keySet() and values().
+     *
+     * 一个EntrySet对象。其实没有包含具体信息。遍历的时候通过HashMap的方法获得所有的键值对内容
      */
     transient Set<Map.Entry<K,V>> entrySet;
 
@@ -652,6 +654,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @param onlyIfAbsent if true, don't change existing value
      * @param evict if false, the table is in creation mode.
      * @return previous value, or null if none
+
+     * evict 为false，代表是创建阶段，其余情况为true。为true时，LinkedHashMap将会根据removeEldestEntry函数决定是否删去最老的节点
      */
     final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
                    boolean evict) {
@@ -893,6 +897,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                     p.next = node.next;
                 ++modCount;
                 --size;
+                // LinkedHashMap需要调整before、after、head、tail指针
                 afterNodeRemoval(node);
                 return node;
             }
@@ -950,6 +955,9 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * operations.
      *
      * @return a set view of the keys contained in this map
+     *
+     * 对keySet进行修改、删除等操作同时也会对原始map产生相应的影响
+     * HashMap的key并没有加入到keySet集合中，而是在遍历的时候，使用迭代器对key进行的遍历.
      */
     public Set<K> keySet() {
         Set<K> ks = keySet;

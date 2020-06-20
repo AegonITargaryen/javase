@@ -294,6 +294,7 @@ public class LinkedHashMap<K,V>
             a.before = b;
     }
 
+    // 插入节点后，判断是否要删除最老的节点
     void afterNodeInsertion(boolean evict) { // possibly remove eldest
         LinkedHashMap.Entry<K,V> first;
         if (evict && (first = head) != null && removeEldestEntry(first)) {
