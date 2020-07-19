@@ -402,7 +402,7 @@ public abstract class AbstractQueuedSynchronizer
          * waitStatus value to indicate the next acquireShared should
          * unconditionally propagate
          */
-        // 表示下一次共享模式同步状态获取将会无条件地被传播下去
+        // 共享模式下，前继结点不仅会唤醒其后继结点，同时也可能会唤醒后继的后继结点
         static final int PROPAGATE = -3;
 
         /**
@@ -562,7 +562,7 @@ public abstract class AbstractQueuedSynchronizer
     /**
      * The synchronization state.
      *
-     * 同步状态
+     * 同步状态,代表共享资源
      */
     private volatile int state;
 
@@ -654,7 +654,7 @@ public abstract class AbstractQueuedSynchronizer
                 return node;
             }
         }
-        // 如果pred为空（即同步队列为空），调用enq方法将新节点添加到同步队列
+        // 如果pred为空（即同步队列为空），或者compareAndSetTail方法失败，则调用enq方法将新节点添加到同步队列（通过自旋方式，不停尝试）
         enq(node);
         return node;
     }
@@ -695,7 +695,7 @@ public abstract class AbstractQueuedSynchronizer
          * non-cancelled successor.
          */
         Node s = node.next;
-        // 如果s为null或者waitStatus为CANCELLE
+        // 如果s为null或者waitStatus为CANCELLED
         if (s == null || s.waitStatus > 0) {
             s = null;
             // 找到未取消的、离node最近的节点
@@ -704,7 +704,7 @@ public abstract class AbstractQueuedSynchronizer
                     s = t;
         }
         if (s != null)
-            // 唤醒s节点
+            // 唤醒s节点,即用unpark()唤醒等待队列中最前边的那个未放弃线程
             LockSupport.unpark(s.thread);
     }
 
@@ -732,8 +732,10 @@ public abstract class AbstractQueuedSynchronizer
                 if (ws == Node.SIGNAL) {
                     if (!compareAndSetWaitStatus(h, Node.SIGNAL, 0))
                         continue;            // loop to recheck cases
+                    // 唤醒后继
                     unparkSuccessor(h);
                 }
+                // node的status可以从0变为 PROPAGATE
                 else if (ws == 0 &&
                          !compareAndSetWaitStatus(h, 0, Node.PROPAGATE))
                     continue;                // loop on failed CAS
@@ -753,6 +755,7 @@ public abstract class AbstractQueuedSynchronizer
      */
     private void setHeadAndPropagate(Node node, int propagate) {
         Node h = head; // Record old head for check below
+        // 将head指向自己
         setHead(node);
         /*
          * Try to signal next queued node if:
@@ -770,6 +773,7 @@ public abstract class AbstractQueuedSynchronizer
          * racing acquires/releases, so most need signals now or soon
          * anyway.
          */
+        // 如果还有剩余量，继续唤醒下一个邻居线程
         if (propagate > 0 || h == null || h.waitStatus < 0 ||
             (h = head) == null || h.waitStatus < 0) {
             Node s = node.next;
@@ -898,9 +902,9 @@ public abstract class AbstractQueuedSynchronizer
      * @return {@code true} if interrupted
      */
     private final boolean parkAndCheckInterrupt() {
-        // 阻塞当前节点的线程
+        // 阻塞当前节点的线程.park()会让当前线程进入waiting状态。在此状态下，有两种途径可以唤醒该线程：1）被unpark()；2）被interrupt()。
         LockSupport.park(this);
-        // 返回当前线程是否为中断状态
+        // 如果被唤醒，查看自己是不是被中断的。并清除当前线程的中断标记位
         return Thread.interrupted();
     }
 
@@ -921,16 +925,17 @@ public abstract class AbstractQueuedSynchronizer
      * @param arg the acquire argument
      * @return {@code true} if interrupted while waiting
      *
-     * 添加完节点后，立即尝试该节点是否能够成功acquire
+     * 使线程阻塞在等待队列中获取资源，一直获取到资源后才返回。如果在整个等待过程中被中断过，则返回true，否则返回false
      */
     final boolean acquireQueued(final Node node, int arg) {
         boolean failed = true;
         try {
-            boolean interrupted = false;
+            boolean interrupted = false; //标记等待过程中是否被中断过
+            // 循环获取
             for (;;) {
-                // 前驱节点
+                // 前驱节点。
                 final Node p = node.predecessor();
-                // 如果p为头节点，则当前线程尝试以独占模式acquire（acquire一般为获取锁）
+                // 如果p为头节点，表明前驱节点p已经成功获取了同步状态。则当前线程尝试以独占模式acquire（acquire一般为获取锁）
                 if (p == head && tryAcquire(arg)) {
                     // node节点成功以独占模式acquire，调用setHead方法将node设置为头节点
                     // head节点（头节点）一般是指当前acquire成功的节点（通常就是当前获取到锁的节点），在设置成头节点后，会将该节点的线程设置为null。
@@ -943,7 +948,7 @@ public abstract class AbstractQueuedSynchronizer
                 // 只有当前驱节点等待状态为SIGNAL，才能将node进行park，因为当前驱节点为SIGNAL
                 // 时，会保证来唤醒自己，因此可以安心park
                 if (shouldParkAfterFailedAcquire(p, node) &&
-                        // node进入park状态，直到被前驱节点唤醒，被唤醒后返回线程是否为中断状态
+                        // node进入park状态，直到被前驱节点唤醒（unpark），被唤醒后返回线程是否为中断状态
                     parkAndCheckInterrupt())
                     interrupted = true;
             }
@@ -1031,8 +1036,10 @@ public abstract class AbstractQueuedSynchronizer
             for (;;) {
                 final Node p = node.predecessor();
                 if (p == head) {
+                    // 如果到head的下一个，因为head是拿到资源的线程，此时node被唤醒，很可能是head用完资源来唤醒自己的
                     int r = tryAcquireShared(arg);
                     if (r >= 0) {
+                        // 将head指向自己，还有剩余资源可以再唤醒之后的线程
                         setHeadAndPropagate(node, r);
                         p.next = null; // help GC
                         if (interrupted)
@@ -1041,6 +1048,7 @@ public abstract class AbstractQueuedSynchronizer
                         return;
                     }
                 }
+                // 判断状态，寻找安全点，进入waiting状态，等着被unpark()或interrupt()
                 if (shouldParkAfterFailedAcquire(p, node) &&
                     parkAndCheckInterrupt())
                     interrupted = true;
@@ -1271,6 +1279,9 @@ public abstract class AbstractQueuedSynchronizer
      * @param arg the acquire argument.  This value is conveyed to
      *        {@link #tryAcquire} but is otherwise uninterpreted and
      *        can represent anything you like.
+     *
+     *
+     *  独占模式下线程获取共享资源的顶层入口，如果获取到资源，线程直接返回，否则进入等待队列，直到获取到资源为止，且整个过程忽略中断的影响。
      */
     public final void acquire(int arg) {
         // tryAcquire提供给子类实现。主要用于以独占模式尝试acquire
@@ -1279,10 +1290,11 @@ public abstract class AbstractQueuedSynchronizer
         if (!tryAcquire(arg) &&
             acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
             // 中断当前线程
+            // 如果线程在等待过程中被中断过，它是不响应的。只是获取资源后才再进行自我中断selfInterrupt()，将中断补上
             selfInterrupt();
 
 
-        // 如果tryAcquire返回false，则尝试acquire失败了，则会调用addWaiter方法，添加一个独占模式的节点到同步队列尾部。
+        // 每个线程获取锁时会尝试直接抢占加塞一次，如果tryAcquire返回false，则尝试acquire失败了，则会调用addWaiter方法，添加一个独占模式的节点到同步队列尾部。
         // 并调用acquireQueued方法尝试acquire。
         // acquireQueued返回true就是代表线程被中断
     }
@@ -1343,11 +1355,16 @@ public abstract class AbstractQueuedSynchronizer
      *        {@link #tryRelease} but is otherwise uninterpreted and
      *        can represent anything you like.
      * @return the value returned from {@link #tryRelease}
+     *
+     *
+     * 独占模式下线程释放共享资源的顶层入口
      */
     public final boolean release(int arg) {
+        // 根据tryRelease()的返回值来判断该线程是否已经完成释放掉资源
         if (tryRelease(arg)) {
             Node h = head;
             if (h != null && h.waitStatus != 0)
+                // 唤醒等待队列里的下一个线程
                 unparkSuccessor(h);
             return true;
         }
@@ -1364,9 +1381,13 @@ public abstract class AbstractQueuedSynchronizer
      * @param arg the acquire argument.  This value is conveyed to
      *        {@link #tryAcquireShared} but is otherwise uninterpreted
      *        and can represent anything you like.
+     *
+     * 共享模式下线程获取共享资源的顶层入口
      */
     public final void acquireShared(int arg) {
+        // 负值代表获取失败；0代表获取成功，但没有剩余资源；正数表示获取成功，还有剩余资源，其他线程还可以去获取
         if (tryAcquireShared(arg) < 0)
+            // 失败则通过doAcquireShared()进入等待队列，直到获取到资源为止才返回
             doAcquireShared(arg);
     }
 
@@ -1423,9 +1444,14 @@ public abstract class AbstractQueuedSynchronizer
      *        {@link #tryReleaseShared} but is otherwise uninterpreted
      *        and can represent anything you like.
      * @return the value returned from {@link #tryReleaseShared}
+     *
+     *
+     * 共享模式下线程释放共享资源的顶层入口
      */
     public final boolean releaseShared(int arg) {
+        // 尝试释放资源
         if (tryReleaseShared(arg)) {
+            //唤醒后继结点
             doReleaseShared();
             return true;
         }
