@@ -2141,13 +2141,19 @@ public abstract class AbstractQueuedSynchronizer
          *      {@link #acquire} with saved state as argument.
          * <li> If interrupted while blocked in step 4, throw InterruptedException.
          * </ol>
+         *
+         * 当前线程在接到信号或被中断之前一直处于等待状态。
          */
         public final void await() throws InterruptedException {
+            // 响应中断
             if (Thread.interrupted())
                 throw new InterruptedException();
+            // 将当前线程构造成条件节点加入condition的条件队列尾部，node即为构造的节点
             Node node = addConditionWaiter();
+            // 释放锁，wait是要释放当前持有锁的，返回释放锁之前状态
             int savedState = fullyRelease(node);
             int interruptMode = 0;
+            // 为true代表node已被转移到阻塞队列
             while (!isOnSyncQueue(node)) {
                 LockSupport.park(this);
                 if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
