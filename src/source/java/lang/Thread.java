@@ -1742,6 +1742,8 @@ class Thread implements Runnable {
     public enum State {
         /**
          * Thread state for a thread which has not yet started.
+         *
+         * 未启动状态
          */
         NEW,
 
@@ -1750,6 +1752,8 @@ class Thread implements Runnable {
          * state is executing in the Java virtual machine but it may
          * be waiting for other resources from the operating system
          * such as processor.
+         *
+         * 处于可运行状态的线程正在 java 虚拟机中执行，但也可能是正在等待来自操作系统资源
          */
         RUNNABLE,
 
@@ -1759,6 +1763,8 @@ class Thread implements Runnable {
          * to enter a synchronized block/method or
          * reenter a synchronized block/method after calling
          * {@link Object#wait() Object.wait}.
+         *
+         * 阻塞状态。等待进入synchronized块
          */
         BLOCKED,
 
@@ -1780,6 +1786,8 @@ class Thread implements Runnable {
          * <tt>Object.notify()</tt> or <tt>Object.notifyAll()</tt> on
          * that object. A thread that has called <tt>Thread.join()</tt>
          * is waiting for a specified thread to terminate.
+         *
+         * 等待状态。调用wait、Thread.join、LockSupport#park()。等待其他线程的notify/notifyAll进行唤醒
          */
         WAITING,
 
@@ -1794,12 +1802,17 @@ class Thread implements Runnable {
          *   <li>{@link LockSupport#parkNanos LockSupport.parkNanos}</li>
          *   <li>{@link LockSupport#parkUntil LockSupport.parkUntil}</li>
          * </ul>
+         *
+         *
+         * 具有指定时间的等待状态。调用Thread.sleep、Object#wait(long)、Thread.join(long)、 LockSupport.parkNanos、LockSupport.parkUntil等方法时触发
          */
         TIMED_WAITING,
 
         /**
          * Thread state for a terminated thread.
          * The thread has completed execution.
+         *
+         * 已终止线程的线程状态或线程已完成执行
          */
         TERMINATED;
     }
