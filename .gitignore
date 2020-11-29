@@ -20,3 +20,7 @@ mvnw.cmd
 *.zip
 ### mac 文件 ###
 .DS_Store
+
+out/
+.gradle/
+lib/
